@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OncoSense · Leukemia Risk</title>
+<style>
+:root{
+  --bg:#0b0c10; --panel:#13151c; --muted:#9aa3b2; --text:#e7e9ee; --sub:#c7ccda;
+  --primary:#2563eb; --primary-2:#1e40af; --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  --outline:#222633; --input:#191b23; --ring:#465bfa;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+  background: radial-gradient(ellipse at 20% 0%,#0e1118,transparent 60%),
+              radial-gradient(ellipse at 80% 100%,#0d0f16,transparent 60%), var(--bg);
+  min-height:100dvh; padding:32px; display:flex; justify-content:center;
+}
+.wrap{width:min(980px,94vw)}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.logo{height:40px;width:40px;border-radius:12px;background:
+  radial-gradient(70% 80% at 30% 30%, #3b82f6 0 60%, transparent 62%),
+  linear-gradient(135deg,#334fd6,#0ea5e9);
+  box-shadow:0 10px 30px rgba(59,130,246,.35), inset 0 0 0 1px rgba(255,255,255,.08)
+}
+h1{margin:0;font-size:26px}
+.subtle{color:var(--muted);font-size:13px}
+.badge{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-weight:700;
+  border:1px solid var(--outline);border-radius:999px;padding:6px 10px;background:#0e1118}
+.dot{height:8px;width:8px;border-radius:50%}
+.card{background:var(--panel);border:1px solid var(--outline);border-radius:18px;box-shadow:0 14px 50px rgba(0,0,0,.45);padding:22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.full{grid-column:1/-1}
+label{display:block;color:var(--sub);font-size:13px;font-weight:800;margin:6px 0}
+input,select{
+  width:100%;padding:12px;background:var(--input);color:var(--text);
+  border:1px solid var(--outline);border-radius:10px;outline:none
+}
+input:focus,select:focus{border-color:var(--ring);box-shadow:0 0 0 3px rgba(70,91,250,.25)}
+.btn{width:100%;padding:14px;border:0;border-radius:12px;cursor:pointer;color:#fff;
+  background:linear-gradient(180deg,var(--primary),var(--primary-2));font-weight:800}
+.pill{display:inline-block;padding:5px 10px;border-radius:999px;border:1px solid var(--outline);font-weight:800}
+.pill.low{color:var(--good);border-color:rgba(34,197,94,.35)}
+.pill.mid{color:var(--warn);border-color:rgba(245,158,11,.35)}
+.pill.high{color:var(--bad);border-color:rgba(239,68,68,.35)}
+.meter{height:8px;background:#10131a;border:1px solid var(--outline);border-radius:999px;overflow:hidden}
+.meter>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
+details{margin-top:16px;border:1px dashed #2a2f3f;border-radius:12px;padding:10px;background:#0f1117}
+summary{cursor:pointer;color:var(--sub);font-weight:800}
+.note{color:var(--muted);font-size:12px}
+.foot{color:var(--muted);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>OncoSense · Leukemia Risk</h1>
+      <div class="subtle">Demo clinical signals → indicative risk (not a diagnosis).</div>
+    </div>
+    <div id="svc" class="badge"><span class="dot" id="dot" style="background:#ef4444"></span><span id="uptxt">DOWN</span></div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Age</label>
+        <input id="age" type="number" placeholder="e.g. 8" min="0"/>
+      </div>
+      <div>
+        <label>Pulse</label>
+        <input id="pulse" type="number" placeholder="e.g. 92" min="0"/>
+      </div>
+
+      <div>
+        <label>Fever (Yes/No)</label>
+        <select id="fever">
+          <option value="">— Auto from temperature —</option>
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+      </div>
+      <div>
+        <label>Fever Temperature (°C) — optional</label>
+        <input id="fever_temp" type="number" step="0.1" placeholder="e.g. 38.5"/>
+        <div class="note">≥ 38.0 °C par fever = Yes auto ho jayega.</div>
+      </div>
+
+      <div>
+        <label>Pallor (Pale Skin)</label>
+        <select id="pallor"><option value="0">No</option><option value="1">Yes</option></select>
+      </div>
+      <div>
+        <label>Bruises</label>
+        <select id="bruises"><option value="0">No</option><option value="1">Yes</option></select>
+      </div>
+
+      <div class="full">
+        <label>Unintentional Weight Loss</label>
+        <select id="weight_loss"><option value="0">No</option><option value="1">Yes</option></select>
+      </div>
+
+      <div class="full"><button id="go" class="btn">Predict Risk</button></div>
+
+      <div class="full">Risk: <span id="riskpill" class="pill">—</span></div>
+      <div class="full meter"><i id="bar"></i></div>
+      <div class="full foot"><span id="score">Score: —</span> · <span id="model">Model: —</span> · API: <span id="apiTxt">—</span></div>
+    </div>
+
+    <details>
+      <summary>Advanced symptoms (optional)</summary>
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label>Fatigue</label>
+          <select id="fatigue"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+        <div>
+          <label>Night Sweats</label>
+          <select id="sweats"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+        <div>
+          <label>Frequent Infections</label>
+          <select id="infect"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+        <div>
+          <label>Bone / Joint Pain</label>
+          <select id="bone"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+      </div>
+      <div class="note" style="margin-top:8px">Backend extra fields ignore kare to bhi request successful rahegi.</div>
+    </details>
+  </div>
+</div>
+
+<script>
+// ---------- CONFIG ----------
+const API_BASE = "https://deloise-hydrarch-nonexpeditiously.ngrok-free.dev"; // local Flask
+document.getElementById("apiTxt").textContent = API_BASE;
+
+// ---------- UI helpers ----------
+const dot = document.getElementById("dot");
+const uptxt = document.getElementById("uptxt");
+const pill = document.getElementById("riskpill");
+const bar  = document.getElementById("bar");
+const scoreEl = document.getElementById("score");
+const modelEl = document.getElementById("model");
+const btn = document.getElementById("go");
+
+function badge(up){
+  dot.style.background = up ? "#22c55e" : "#ef4444";
+  uptxt.textContent = up ? "UP" : "DOWN";
+}
+async function ping(){
+  try{
+    const r = await fetch(API_BASE+"/health");
+    const j = await r.json();
+    badge(j.ok); modelEl.textContent = "Model: "+(j.model_kind||"n/a");
+  }catch{ badge(false); modelEl.textContent = "Model: n/a"; }
+}
+ping(); setInterval(ping, 15000);
+
+function intval(id){
+  const v = document.getElementById(id).value.trim();
+  if(v==="") return null; 
+  const n = parseInt(v,10); 
+  return Number.isFinite(n) ? n : null;
+}
+function sel(id){ return parseInt(document.getElementById(id).value,10) }
+function feverFlag(){
+  const f = document.getElementById("fever").value;
+  if (f==="1"||f==="0") return parseInt(f,10);
+  const t = parseFloat(document.getElementById("fever_temp").value);
+  return (Number.isFinite(t) && t>=38.0) ? 1 : 0;
+}
+function grade(p){ if(p>=0.66) return ["High","high"]; if(p>=0.33) return ["Medium","mid"]; return ["Low","low"]; }
+
+// ---------- Predict ----------
+btn.addEventListener("click", async ()=>{
+  const age = intval("age"), pulse = intval("pulse");
+  if(age===null || pulse===null){
+    pill.className="pill"; pill.textContent="Fill age & pulse"; return;
+  }
+  const t = parseFloat(document.getElementById("fever_temp").value);
+  const payload = {
+    age, pulse,
+    fever: feverFlag(),
+    fever_temp_c: Number.isFinite(t)? t : undefined,
+    pallor: sel("pallor"),
+    bruises: sel("bruises"),
+    weight_loss: sel("weight_loss"),
+    fatigue: sel("fatigue"),
+    night_sweats: sel("sweats"),
+    frequent_infections: sel("infect"),
+    bone_pain: sel("bone")
+  };
+
+  try{
+    btn.disabled=true; btn.textContent="Predicting…";
+    const r = await fetch(API_BASE+"/predict", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok){ badge(false); throw new Error(await r.text()); }
+    badge(true);
+    const j = await r.json();
+    const p = Number(j.risk||0);
+    const g = grade(p);
+    pill.className="pill "+g[1];
+    pill.textContent = j.class_name || g[0];
+    bar.style.width = Math.round(p*100)+"%";
+    scoreEl.textContent = "Score: "+(p*100).toFixed(1)+"%";
+    modelEl.textContent = "Model: "+(j.used_model||"n/a");
+  }catch(e){
+    pill.className="pill"; pill.textContent="Request failed";
+    bar.style.width="0%"; scoreEl.textContent=String(e);
+  }finally{
+    btn.disabled=false; btn.textContent="Predict Risk";
+  }
+});
+</script>
+</body>
+</html>
