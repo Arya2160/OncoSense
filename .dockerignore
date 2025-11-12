@@ -1,0 +1,8 @@
+﻿__pycache__
+*.pyc
+venv/
+tf212env/
+.git
+*.h5
+*.bak
+*.log
